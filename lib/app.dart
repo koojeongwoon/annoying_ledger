@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'package:annoying_ledger/core/api/api_client.dart';
@@ -9,6 +10,7 @@ import 'package:annoying_ledger/features/auth/data/auth_repository.dart';
 import 'package:annoying_ledger/features/auth/view/login_screen.dart';
 import 'package:annoying_ledger/features/home/view/home_screen.dart';
 import 'package:annoying_ledger/widgets/splash_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class App extends StatelessWidget {
   const App({super.key, required this.tokenStorage});
@@ -24,7 +26,7 @@ class App extends StatelessWidget {
           dispose: (_, client) => client.close(),
         ),
         ProxyProvider<ApiClient, AuthRepository>(
-          update: (_, apiClient, __) =>
+          update: (_, apiClient, _) =>
               AuthRepository(apiClient: apiClient, tokenStorage: tokenStorage),
         ),
         ChangeNotifierProvider<AuthController>(
@@ -40,8 +42,21 @@ class App extends StatelessWidget {
         title: 'Annoying Ledger',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+          textTheme: GoogleFonts.notoSansKrTextTheme(
+            Theme.of(context).textTheme,
+          ),
           useMaterial3: true,
+
         ),
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('en', 'US'),
+          Locale('ko', 'KR'),
+        ],
         home: const AuthGate(),
       ),
     );

@@ -10,9 +10,7 @@ class MenuTreeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (nodes.isEmpty) {
-      return const Center(
-        child: Text('접근 가능한 메뉴가 없습니다.'),
-      );
+      return const Center(child: Text('접근 가능한 메뉴가 없습니다.'));
     }
 
     final tiles = _buildTiles(nodes);
@@ -51,7 +49,10 @@ class _MenuTile extends StatelessWidget {
       contentPadding: EdgeInsets.only(left: indent, right: 16),
       leading: depth == 0
           ? const Icon(Icons.menu)
-          : Icon(Icons.subdirectory_arrow_right, color: theme.colorScheme.primary),
+          : Icon(
+              Icons.subdirectory_arrow_right,
+              color: theme.colorScheme.primary,
+            ),
       title: Text(item.displayName),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,14 +69,14 @@ class _MenuTile extends StatelessWidget {
                   for (final action in item.allowedActions)
                     Chip(
                       label: Text(action),
-                      backgroundColor:
-                          theme.colorScheme.primaryContainer.withOpacity(0.6),
+                      backgroundColor: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.6),
                     ),
                   for (final action in item.deniedActions)
                     Chip(
                       label: Text(action),
-                      backgroundColor:
-                          theme.colorScheme.errorContainer.withOpacity(0.6),
+                      backgroundColor: theme.colorScheme.errorContainer
+                          .withValues(alpha: 0.6),
                     ),
                 ],
               ),

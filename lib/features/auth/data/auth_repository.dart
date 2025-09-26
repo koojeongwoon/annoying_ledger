@@ -1,7 +1,7 @@
 import 'package:annoying_ledger/core/api/api_client.dart';
 import 'package:annoying_ledger/core/storage/token_storage.dart';
 import 'package:annoying_ledger/features/auth/models/resource_access.dart';
-import 'package:annoying_ledger/features/auth/models/success_response.dart';
+
 import 'package:annoying_ledger/features/auth/models/token_bundle.dart';
 import 'package:annoying_ledger/features/auth/models/user_profile.dart';
 
@@ -42,8 +42,13 @@ class AuthRepository {
       if (scope != null) 'scope': scope,
     };
 
-    final response = await apiClient.post(_loginPath, body: payload);
-    final tokens = _parseTokenResponse(response);
+    final response = await apiClient.post(
+      _loginPath,
+      body: payload,
+      fromJsonT: (json) => TokenBundle.fromJson(json as Map<String, dynamic>),
+    );
+
+    final tokens = response.data!;
     await tokenStorage.save(tokens);
     return tokens;
   }
@@ -59,8 +64,13 @@ class AuthRepository {
       if (scope != null) 'scope': scope,
     };
 
-    final response = await apiClient.post(_refreshPath, body: payload);
-    final tokens = _parseTokenResponse(response);
+    final response = await apiClient.post(
+      _refreshPath,
+      body: payload,
+      fromJsonT: (json) => TokenBundle.fromJson(json as Map<String, dynamic>),
+    );
+
+    final tokens = response.data!;
     await tokenStorage.save(tokens);
     return tokens;
   }
@@ -87,19 +97,21 @@ class AuthRepository {
     final response = await apiClient.get(
       _profilePath,
       headers: _authHeader(tokens.accessToken, tokens.tokenType),
+      fromJsonT: (json) => UserProfile.fromJson(json as Map<String, dynamic>),
     );
-    return _parseProfile(response);
+    return response.data!;
   }
 
   Future<UserResourceAccess> fetchMyResources(TokenBundle tokens) async {
     final response = await apiClient.get(
       _resourcesPath,
       headers: _authHeader(tokens.accessToken, tokens.tokenType),
+      fromJsonT: (json) => UserResourceAccess.fromJson(json as Map<String, dynamic>),
     );
-    return _parseResourceAccess(response);
+    return response.data!;
   }
 
-  Future<SuccessResponse> register({
+  Future<void> register({
     required String email,
     required String password,
     required String name,
@@ -112,8 +124,7 @@ class AuthRepository {
       if (age != null) 'age': age,
     };
 
-    final response = await apiClient.post(_registerPath, body: payload);
-    return _parseSuccess(response);
+    await apiClient.post(_registerPath, body: payload);
   }
 
   Map<String, String> _authHeader(String accessToken, String tokenType) {
@@ -121,33 +132,5 @@ class AuthRepository {
     return {
       'Authorization': '$prefix $accessToken',
     };
-  }
-
-  TokenBundle _parseTokenResponse(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return TokenBundle.fromJson(data);
-    }
-    throw const FormatException('Unexpected token response shape');
-  }
-
-  UserProfile _parseProfile(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return UserProfile.fromJson(data);
-    }
-    throw const FormatException('Unexpected profile response shape');
-  }
-
-  UserResourceAccess _parseResourceAccess(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return UserResourceAccess.fromJson(data);
-    }
-    throw const FormatException('Unexpected resource response shape');
-  }
-
-  SuccessResponse _parseSuccess(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return SuccessResponse.fromJson(data);
-    }
-    throw const FormatException('Unexpected success response shape');
   }
 }

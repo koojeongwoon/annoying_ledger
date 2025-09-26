@@ -93,7 +93,7 @@ class UserResourceAccess {
   final List<ResourceAccessItem> deniedResources;
 
   factory UserResourceAccess.fromJson(Map<String, dynamic> json) {
-    List<ResourceAccessItem> _parseList(String key) {
+    List<ResourceAccessItem> parseList(String key) {
       final raw = json[key];
       if (raw is List) {
         return raw
@@ -105,25 +105,25 @@ class UserResourceAccess {
     }
 
     return UserResourceAccess(
-      menus: _parseList('menus'),
-      pages: _parseList('pages'),
-      features: _parseList('features'),
-      elements: _parseList('elements'),
-      deniedResources: _parseList('deniedResources'),
+      menus: parseList('menus'),
+      pages: parseList('pages'),
+      features: parseList('features'),
+      elements: parseList('elements'),
+      deniedResources: parseList('deniedResources'),
     );
   }
 
   Map<String, dynamic> toJson() {
-    List<Map<String, dynamic>> _toJsonList(List<ResourceAccessItem> items) {
+    List<Map<String, dynamic>> toJsonList(List<ResourceAccessItem> items) {
       return items.map((item) => item.toJson()).toList();
     }
 
     return {
-      'menus': _toJsonList(menus),
-      'pages': _toJsonList(pages),
-      'features': _toJsonList(features),
-      'elements': _toJsonList(elements),
-      'deniedResources': _toJsonList(deniedResources),
+      'menus': toJsonList(menus),
+      'pages': toJsonList(pages),
+      'features': toJsonList(features),
+      'elements': toJsonList(elements),
+      'deniedResources': toJsonList(deniedResources),
     };
   }
 
