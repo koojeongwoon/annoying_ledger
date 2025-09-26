@@ -1,18 +1,25 @@
 import 'package:annoying_ledger/core/api/api_client.dart';
 import 'package:annoying_ledger/core/storage/token_storage.dart';
+import 'package:annoying_ledger/features/auth/data/token_auth_interceptor.dart';
 import 'package:annoying_ledger/features/auth/models/resource_access.dart';
-
 import 'package:annoying_ledger/features/auth/models/token_bundle.dart';
 import 'package:annoying_ledger/features/auth/models/user_profile.dart';
 
 class AuthRepository {
-  AuthRepository({
-    required this.apiClient,
-    required this.tokenStorage,
-  });
+  AuthRepository({required this.apiClient, required this.tokenStorage}) {
+    _authInterceptor = TokenAuthInterceptor(
+      tokenStorage: tokenStorage,
+      onRefresh: (refreshToken) => _refreshInternal(refreshToken: refreshToken),
+      onSessionExpired: () async {
+        await tokenStorage.clear();
+      },
+    );
+    apiClient.setAuthInterceptor(_authInterceptor);
+  }
 
   final ApiClient apiClient;
   final TokenStorage tokenStorage;
+  late final TokenAuthInterceptor _authInterceptor;
 
   static const _loginPath = '/api/auth/login';
   static const _refreshPath = '/api/auth/refresh';
@@ -21,9 +28,18 @@ class AuthRepository {
   static const _resourcesPath = '/api/auth/resources/me';
   static const _registerPath = '/api/users/register';
 
-  TokenBundle? loadSavedTokens() => tokenStorage.read();
+  Future<TokenBundle?> loadSavedTokens() async {
+    final tokens = await tokenStorage.read();
+    _authInterceptor.setTokens(tokens);
+    return tokens;
+  }
 
-  Future<void> clearTokens() => tokenStorage.clear();
+  Future<void> clearTokens() async {
+    await tokenStorage.clear();
+    _authInterceptor.clearCache();
+  }
+
+  TokenBundle? get cachedTokens => _authInterceptor.cachedTokens;
 
   Future<TokenBundle> login({
     required String email,
@@ -46,10 +62,12 @@ class AuthRepository {
       _loginPath,
       body: payload,
       fromJsonT: (json) => TokenBundle.fromJson(json as Map<String, dynamic>),
+      authenticated: false,
     );
 
     final tokens = response.data!;
     await tokenStorage.save(tokens);
+    _authInterceptor.setTokens(tokens);
     return tokens;
   }
 
@@ -58,27 +76,15 @@ class AuthRepository {
     String? deviceFingerprint,
     String? scope,
   }) async {
-    final payload = {
-      'refreshToken': refreshToken,
-      if (deviceFingerprint != null) 'deviceFingerprint': deviceFingerprint,
-      if (scope != null) 'scope': scope,
-    };
-
-    final response = await apiClient.post(
-      _refreshPath,
-      body: payload,
-      fromJsonT: (json) => TokenBundle.fromJson(json as Map<String, dynamic>),
+    final tokens = await _refreshInternal(
+      refreshToken: refreshToken,
+      deviceFingerprint: deviceFingerprint,
+      scope: scope,
     );
-
-    final tokens = response.data!;
-    await tokenStorage.save(tokens);
     return tokens;
   }
 
-  Future<void> logout({
-    required TokenBundle tokens,
-    String? reason,
-  }) async {
+  Future<void> logout({required TokenBundle tokens, String? reason}) async {
     try {
       await apiClient.post(
         _logoutPath,
@@ -86,27 +92,29 @@ class AuthRepository {
           'sessionId': tokens.sessionId,
           if (reason != null) 'reason': reason,
         },
-        headers: _authHeader(tokens.accessToken, tokens.tokenType),
+        authenticated: true,
       );
     } finally {
       await tokenStorage.clear();
+      _authInterceptor.clearCache();
     }
   }
 
-  Future<UserProfile> fetchCurrentUser(TokenBundle tokens) async {
+  Future<UserProfile> fetchCurrentUser() async {
     final response = await apiClient.get(
       _profilePath,
-      headers: _authHeader(tokens.accessToken, tokens.tokenType),
+      authenticated: true,
       fromJsonT: (json) => UserProfile.fromJson(json as Map<String, dynamic>),
     );
     return response.data!;
   }
 
-  Future<UserResourceAccess> fetchMyResources(TokenBundle tokens) async {
+  Future<UserResourceAccess> fetchMyResources() async {
     final response = await apiClient.get(
       _resourcesPath,
-      headers: _authHeader(tokens.accessToken, tokens.tokenType),
-      fromJsonT: (json) => UserResourceAccess.fromJson(json as Map<String, dynamic>),
+      authenticated: true,
+      fromJsonT: (json) =>
+          UserResourceAccess.fromJson(json as Map<String, dynamic>),
     );
     return response.data!;
   }
@@ -127,10 +135,27 @@ class AuthRepository {
     await apiClient.post(_registerPath, body: payload);
   }
 
-  Map<String, String> _authHeader(String accessToken, String tokenType) {
-    final prefix = tokenType.isEmpty ? 'Bearer' : tokenType;
-    return {
-      'Authorization': '$prefix $accessToken',
+  Future<TokenBundle> _refreshInternal({
+    required String refreshToken,
+    String? deviceFingerprint,
+    String? scope,
+  }) async {
+    final payload = {
+      'refreshToken': refreshToken,
+      if (deviceFingerprint != null) 'deviceFingerprint': deviceFingerprint,
+      if (scope != null) 'scope': scope,
     };
+
+    final response = await apiClient.post(
+      _refreshPath,
+      body: payload,
+      fromJsonT: (json) => TokenBundle.fromJson(json as Map<String, dynamic>),
+      authenticated: false,
+    );
+
+    final tokens = response.data!;
+    await tokenStorage.save(tokens);
+    _authInterceptor.setTokens(tokens);
+    return tokens;
   }
 }

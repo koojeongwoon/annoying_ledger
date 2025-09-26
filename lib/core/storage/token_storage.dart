@@ -1,37 +1,38 @@
 import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:annoying_ledger/features/auth/models/token_bundle.dart';
 
 class TokenStorage {
-  TokenStorage(this._preferences);
+  TokenStorage(this._secureStorage);
 
-  final SharedPreferences _preferences;
+  final FlutterSecureStorage _secureStorage;
 
   static const _key = 'auth_tokens';
 
   static Future<TokenStorage> create() async {
-    final prefs = await SharedPreferences.getInstance();
-    return TokenStorage(prefs);
+    const storage = FlutterSecureStorage();
+    return TokenStorage(storage);
   }
 
   Future<void> save(TokenBundle tokens) async {
-    await _preferences.setString(_key, jsonEncode(tokens.toJson()));
+    await _secureStorage.write(key: _key, value: jsonEncode(tokens.toJson()));
   }
 
-  TokenBundle? read() {
-    final raw = _preferences.getString(_key);
+  Future<TokenBundle?> read() async {
+    final raw = await _secureStorage.read(key: _key);
     if (raw == null) return null;
     try {
       final data = jsonDecode(raw) as Map<String, dynamic>;
       return TokenBundle.fromJson(data);
     } catch (_) {
+      await _secureStorage.delete(key: _key);
       return null;
     }
   }
 
   Future<void> clear() async {
-    await _preferences.remove(_key);
+    await _secureStorage.delete(key: _key);
   }
 }

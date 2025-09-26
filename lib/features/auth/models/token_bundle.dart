@@ -19,9 +19,13 @@ class TokenBundle {
     return TokenBundle(
       tokenType: json['tokenType'] as String? ?? 'Bearer',
       accessToken: json['accessToken'] as String? ?? '',
-      accessTokenExpiresAt: DateTime.parse(json['accessTokenExpiresAt'] as String),
+      accessTokenExpiresAt: DateTime.parse(
+        json['accessTokenExpiresAt'] as String,
+      ),
       refreshToken: json['refreshToken'] as String? ?? '',
-      refreshTokenExpiresAt: DateTime.parse(json['refreshTokenExpiresAt'] as String),
+      refreshTokenExpiresAt: DateTime.parse(
+        json['refreshTokenExpiresAt'] as String,
+      ),
       sessionId: json['sessionId'] as String? ?? '',
     );
   }
@@ -39,7 +43,8 @@ class TokenBundle {
 
   bool get isAccessTokenExpired => DateTime.now().isAfter(accessTokenExpiresAt);
 
-  bool get isRefreshTokenExpired => DateTime.now().isAfter(refreshTokenExpiresAt);
+  bool get isRefreshTokenExpired =>
+      DateTime.now().isAfter(refreshTokenExpiresAt);
 
   TokenBundle copyWith({
     String? tokenType,
@@ -52,8 +57,7 @@ class TokenBundle {
     return TokenBundle(
       tokenType: tokenType ?? this.tokenType,
       accessToken: accessToken ?? this.accessToken,
-      accessTokenExpiresAt:
-          accessTokenExpiresAt ?? this.accessTokenExpiresAt,
+      accessTokenExpiresAt: accessTokenExpiresAt ?? this.accessTokenExpiresAt,
       refreshToken: refreshToken ?? this.refreshToken,
       refreshTokenExpiresAt:
           refreshTokenExpiresAt ?? this.refreshTokenExpiresAt,

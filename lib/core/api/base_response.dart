@@ -1,4 +1,3 @@
-
 import 'package:intl/intl.dart';
 
 class BaseResponse<T> {
@@ -14,7 +13,10 @@ class BaseResponse<T> {
     required this.timestamp,
   });
 
-  factory BaseResponse.fromJson(Map<String, dynamic> json, T Function(Object? json)? fromJsonT) {
+  factory BaseResponse.fromJson(
+    Map<String, dynamic> json,
+    T Function(Object? json)? fromJsonT,
+  ) {
     return BaseResponse<T>(
       code: json['code'] as String,
       message: json['message'] as String,

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:annoying_ledger/core/api/api_client.dart';
 import 'package:annoying_ledger/features/auth/data/auth_repository.dart';
 import 'package:annoying_ledger/features/auth/models/resource_access.dart';
+import 'package:annoying_ledger/features/auth/models/auth_failures.dart';
 import 'package:annoying_ledger/features/auth/models/token_bundle.dart';
 import 'package:annoying_ledger/features/auth/models/user_profile.dart';
 
@@ -19,6 +20,7 @@ class AuthController extends ChangeNotifier {
   UserResourceAccess? _resourceAccess;
   String? _errorMessage;
   bool _busy = false;
+  bool _sessionExpired = false;
 
   AuthStatus get status => _status;
   UserProfile? get profile => _profile;
@@ -30,6 +32,7 @@ class AuthController extends ChangeNotifier {
   bool get isBusy => _busy || _status == AuthStatus.initializing;
   String? get errorMessage => _errorMessage;
   TokenBundle? get tokens => _tokens;
+  bool get sessionExpired => _sessionExpired;
 
   bool get isAuthenticated => _status == AuthStatus.authenticated;
 
@@ -39,18 +42,25 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void acknowledgeSessionExpiry() {
+    if (!_sessionExpired) return;
+    _sessionExpired = false;
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     _status = AuthStatus.initializing;
+    _sessionExpired = false;
     notifyListeners();
-    final saved = _repository.loadSavedTokens();
+    final saved = await _repository.loadSavedTokens();
     if (saved == null) {
       _setUnauthenticated();
       return;
     }
 
     if (saved.isRefreshTokenExpired) {
-      await _repository.clearTokens();
-      _setUnauthenticated();
+      await _handleSessionExpired();
+      notifyListeners();
       return;
     }
 
@@ -68,6 +78,7 @@ class AuthController extends ChangeNotifier {
   }) async {
     _setBusy(true);
     _errorMessage = null;
+    _sessionExpired = false;
     try {
       final tokens = await _repository.login(
         email: email,
@@ -116,6 +127,7 @@ class AuthController extends ChangeNotifier {
       return;
     }
     _setBusy(true);
+    _sessionExpired = false;
     try {
       await _repository.logout(tokens: current, reason: reason);
     } finally {
@@ -129,8 +141,16 @@ class AuthController extends ChangeNotifier {
 
   Future<void> refreshResources() async {
     if (!isAuthenticated) return;
-    await _ensureFreshTokens();
-    await _loadResources();
+    try {
+      await _ensureFreshTokens();
+      await _loadResources();
+    } on SessionExpiredException catch (error) {
+      await _handleSessionExpired(message: _toErrorMessage(error));
+    } on AuthRequiredException catch (error) {
+      await _handleSessionExpired(message: _toErrorMessage(error));
+    } on Exception catch (error) {
+      _errorMessage = _toErrorMessage(error);
+    }
     notifyListeners();
   }
 
@@ -141,6 +161,11 @@ class AuthController extends ChangeNotifier {
       await _loadResources();
       _status = AuthStatus.authenticated;
       _errorMessage = null;
+      _sessionExpired = false;
+    } on SessionExpiredException catch (error) {
+      await _handleSessionExpired(message: _toErrorMessage(error));
+    } on AuthRequiredException catch (error) {
+      await _handleSessionExpired(message: _toErrorMessage(error));
     } on Exception catch (error) {
       _errorMessage = _toErrorMessage(error);
       await _repository.clearTokens();
@@ -155,37 +180,60 @@ class AuthController extends ChangeNotifier {
   Future<void> _loadProfile() async {
     final current = _tokens;
     if (current == null) {
-      throw const _AuthRequiredException();
+      throw const AuthRequiredException();
     }
-    _profile = await _repository.fetchCurrentUser(current);
+    _profile = await _repository.fetchCurrentUser();
+    _syncTokensFromRepository();
   }
 
   Future<void> _loadResources() async {
     final current = _tokens;
     if (current == null) {
-      throw const _AuthRequiredException();
+      throw const AuthRequiredException();
     }
-    _resourceAccess = await _repository.fetchMyResources(current);
+    _resourceAccess = await _repository.fetchMyResources();
+    _syncTokensFromRepository();
   }
 
   Future<void> _ensureFreshTokens() async {
-    final current = _tokens;
+    final latest = _repository.cachedTokens;
+    final current = latest ?? _tokens;
     if (current == null) {
-      throw const _AuthRequiredException();
+      throw const AuthRequiredException();
     }
-    if (current.isAccessTokenExpired && !current.isRefreshTokenExpired) {
+    if (current.isRefreshTokenExpired) {
+      throw const SessionExpiredException();
+    }
+    if (current.isAccessTokenExpired) {
       final refreshed = await _repository.refresh(
         refreshToken: current.refreshToken,
       );
       _tokens = refreshed;
-    } else if (current.isRefreshTokenExpired) {
-      throw const _SessionExpiredException();
+    } else {
+      _tokens = current;
     }
+  }
+
+  Future<void> _handleSessionExpired({String? message}) async {
+    _sessionExpired = true;
+    _errorMessage = message ?? '세션이 만료되었습니다. 다시 로그인해 주세요.';
+    await _repository.clearTokens();
+    _tokens = null;
+    _profile = null;
+    _resourceAccess = null;
+    _status = AuthStatus.unauthenticated;
   }
 
   void _setUnauthenticated() {
     _status = AuthStatus.unauthenticated;
     notifyListeners();
+  }
+
+  void _syncTokensFromRepository() {
+    final latest = _repository.cachedTokens;
+    if (latest != null) {
+      _tokens = latest;
+    }
   }
 
   void _setBusy(bool value) {
@@ -195,8 +243,11 @@ class AuthController extends ChangeNotifier {
   }
 
   String _toErrorMessage(Exception error) {
-    if (error is _SessionExpiredException) {
+    if (error is SessionExpiredException) {
       return '세션이 만료되었습니다. 다시 로그인해 주세요.';
+    }
+    if (error is AuthRequiredException) {
+      return '인증이 필요합니다.';
     }
     if (error is ApiException) {
       final data = error.data;
@@ -213,18 +264,4 @@ class AuthController extends ChangeNotifier {
     }
     return error.toString();
   }
-}
-
-class _AuthRequiredException implements Exception {
-  const _AuthRequiredException();
-
-  @override
-  String toString() => '인증이 필요합니다.';
-}
-
-class _SessionExpiredException implements Exception {
-  const _SessionExpiredException();
-
-  @override
-  String toString() => '세션이 만료되었습니다.';
 }

@@ -135,7 +135,7 @@ class UserResourceAccess {
     items.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
 
     final Map<int, MenuNode> byId = {
-      for (final item in items) item.resourceId: MenuNode(item)
+      for (final item in items) item.resourceId: MenuNode(item),
     };
     final List<MenuNode> roots = [];
 
@@ -150,8 +150,7 @@ class UserResourceAccess {
     }
 
     void sortNodes(List<MenuNode> nodes) {
-      nodes.sort((a, b) =>
-          a.item.displayOrder.compareTo(b.item.displayOrder));
+      nodes.sort((a, b) => a.item.displayOrder.compareTo(b.item.displayOrder));
       for (final node in nodes) {
         if (node.children.isNotEmpty) {
           sortNodes(node.children);

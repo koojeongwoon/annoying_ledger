@@ -52,9 +52,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (error == null) {
       Navigator.of(context).pop(_emailController.text.trim());
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
   }
 
@@ -66,168 +66,188 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final busy = auth.isBusy;
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('회원가입'),
-          ),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Card(
-                  elevation: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            '새 계정을 생성합니다',
-                            style: theme.textTheme.headlineSmall,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
-                              labelText: '이메일',
-                              hintText: 'user@example.com',
-                            ),
-                            validator: (value) {
-                              final trimmed = value?.trim() ?? '';
-                              if (trimmed.isEmpty) {
-                                return '이메일을 입력해 주세요.';
-                              }
-                              if (!trimmed.contains('@')) {
-                                return '올바른 이메일 형식을 입력해 주세요.';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(
-                              labelText: '이름',
-                              hintText: '홍길동',
-                            ),
-                            validator: (value) {
-                              final trimmed = value?.trim() ?? '';
-                              if (trimmed.isEmpty) {
-                                return '이름을 입력해 주세요.';
-                              }
-                              if (trimmed.length > 50) {
-                                return '이름은 50자 이내로 입력해 주세요.';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _ageController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: '나이 (선택)',
-                            ),
-                            validator: (value) {
-                              final trimmed = value?.trim() ?? '';
-                              if (trimmed.isEmpty) {
-                                return null;
-                              }
-                              final parsed = int.tryParse(trimmed);
-                              if (parsed == null) {
-                                return '숫자로 입력해 주세요.';
-                              }
-                              if (parsed < 0 || parsed > 150) {
-                                return '0에서 150 사이의 값을 입력해 주세요.';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            decoration: InputDecoration(
-                              labelText: '비밀번호',
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
+          appBar: AppBar(title: const Text('회원가입')),
+          body: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final maxFormWidth = _formWidthFor(constraints.maxWidth);
+                return Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxFormWidth),
+                      child: Card(
+                        elevation: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  '새 계정을 생성합니다',
+                                  style: theme.textTheme.headlineSmall,
+                                  textAlign: TextAlign.center,
                                 ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if ((value ?? '').isEmpty) {
-                                return '비밀번호를 입력해 주세요.';
-                              }
-                              if ((value ?? '').length < 6) {
-                                return '비밀번호는 6자 이상이어야 합니다.';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: _obscureConfirmPassword,
-                            decoration: InputDecoration(
-                              labelText: '비밀번호 확인',
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _obscureConfirmPassword =
-                                        !_obscureConfirmPassword;
-                                  });
-                                },
-                                icon: Icon(
-                                  _obscureConfirmPassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
+                                const SizedBox(height: 24),
+                                TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: const InputDecoration(
+                                    labelText: '이메일',
+                                    hintText: 'user@example.com',
+                                  ),
+                                  validator: (value) {
+                                    final trimmed = value?.trim() ?? '';
+                                    if (trimmed.isEmpty) {
+                                      return '이메일을 입력해 주세요.';
+                                    }
+                                    if (!trimmed.contains('@')) {
+                                      return '올바른 이메일 형식을 입력해 주세요.';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                              ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _nameController,
+                                  decoration: const InputDecoration(
+                                    labelText: '이름',
+                                    hintText: '홍길동',
+                                  ),
+                                  validator: (value) {
+                                    final trimmed = value?.trim() ?? '';
+                                    if (trimmed.isEmpty) {
+                                      return '이름을 입력해 주세요.';
+                                    }
+                                    if (trimmed.length > 50) {
+                                      return '이름은 50자 이내로 입력해 주세요.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _ageController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: '나이 (선택)',
+                                  ),
+                                  validator: (value) {
+                                    final trimmed = value?.trim() ?? '';
+                                    if (trimmed.isEmpty) {
+                                      return null;
+                                    }
+                                    final parsed = int.tryParse(trimmed);
+                                    if (parsed == null) {
+                                      return '숫자로 입력해 주세요.';
+                                    }
+                                    if (parsed < 0 || parsed > 150) {
+                                      return '0에서 150 사이의 값을 입력해 주세요.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  decoration: InputDecoration(
+                                    labelText: '비밀번호',
+                                    suffixIcon: IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscurePassword = !_obscurePassword;
+                                        });
+                                      },
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if ((value ?? '').isEmpty) {
+                                      return '비밀번호를 입력해 주세요.';
+                                    }
+                                    if ((value ?? '').length < 6) {
+                                      return '비밀번호는 6자 이상이어야 합니다.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _confirmPasswordController,
+                                  obscureText: _obscureConfirmPassword,
+                                  decoration: InputDecoration(
+                                    labelText: '비밀번호 확인',
+                                    suffixIcon: IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscureConfirmPassword =
+                                              !_obscureConfirmPassword;
+                                        });
+                                      },
+                                      icon: Icon(
+                                        _obscureConfirmPassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if ((value ?? '').isEmpty) {
+                                      return '비밀번호를 다시 입력해 주세요.';
+                                    }
+                                    if (value != _passwordController.text) {
+                                      return '비밀번호가 일치하지 않습니다.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                                FilledButton(
+                                  onPressed: busy ? null : () => _submit(auth),
+                                  child: busy
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text('회원가입 완료'),
+                                ),
+                              ],
                             ),
-                            validator: (value) {
-                              if ((value ?? '').isEmpty) {
-                                return '비밀번호를 다시 입력해 주세요.';
-                              }
-                              if (value != _passwordController.text) {
-                                return '비밀번호가 일치하지 않습니다.';
-                              }
-                              return null;
-                            },
                           ),
-                          const SizedBox(height: 24),
-                          FilledButton(
-                            onPressed: busy ? null : () => _submit(auth),
-                            child: busy
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Text('회원가입 완료'),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         );
       },
     );
+  }
+
+  double _formWidthFor(double maxWidth) {
+    if (maxWidth >= 1000) {
+      return 600;
+    }
+    if (maxWidth >= 600) {
+      return 500;
+    }
+    return 440;
   }
 }

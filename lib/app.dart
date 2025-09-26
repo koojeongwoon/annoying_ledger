@@ -46,17 +46,13 @@ class App extends StatelessWidget {
             Theme.of(context).textTheme,
           ),
           useMaterial3: true,
-
         ),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        supportedLocales: const [
-          Locale('en', 'US'),
-          Locale('ko', 'KR'),
-        ],
+        supportedLocales: const [Locale('en', 'US'), Locale('ko', 'KR')],
         home: const AuthGate(),
       ),
     );
